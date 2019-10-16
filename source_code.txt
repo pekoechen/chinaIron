@@ -1,0 +1,312 @@
+Type PRINT_PARAM
+    file_path As String
+    num_to_print As Integer
+
+End Type
+
+Function send_to_printer(file_path As String)
+
+    Dim wrdDoc As Object
+
+    '檔案路徑
+
+    'rpath = "D:\ABD\123.DOC"
+
+    'rpath = "D:\autoprint\1.docx"
+    
+    '列印份數
+
+    'r = Sheets("Sheet2").Cells(2, 3)
+
+    '引用Word
+
+    Set wrdApp = CreateObject("Word.Application")
+
+    '開啟要列印的檔案
+
+    Set wrdDoc = wrdApp.Documents.Open(file_path)
+
+    '列印檔案，列印份數為 r
+
+    wrdDoc.PrintOut Copies:=1
+    MsgBox "russell" & " " & file_path
+    
+    
+
+    '不存檔，關閉檔案
+
+    wrdDoc.Close False
+
+    '關閉先前引用的WORD
+
+    wrdApp.Quit
+
+End Function
+
+Sub print_select()
+    'https://www.excel-easy.com/vba/examples/read-data-from-text-file.html
+    'https://www.homeandlearn.org/open_a_text_file_in_vba.html
+    Dim curPath As String
+    
+    Dim filePath As String
+    Dim fileName As String
+    Dim row_number As Integer
+    Dim param As PRINT_PARAM
+    Dim fil
+    
+    fil = Application.GetOpenFilename(Title:="請選擇你要選取的 *.docx", filefilter:="FILE,*.docx,")
+    
+    curPath = ActiveWorkbook.Path
+    filePath = curPath & "\1.docx"
+    'MsgBox filePath
+    'MsgBox fil
+    
+    If fil = False Then
+        Exit Sub
+    Else
+       ' MsgBox fil
+        filePath = fil
+        'fileName = Dir(filePath)
+        
+        Call send_to_printer(filePath)
+
+    End If
+    
+    
+End Sub
+
+Sub print_list()
+    Dim ws As Worksheet
+    Set ws = ActiveSheet
+    
+    Dim rowIdx As Integer
+    Dim rowStart As Integer
+    Dim rowEnd As Integer
+    
+    Dim filePath As String
+    
+    rowStart = 2
+    rowEnd = ws.Range("A" & "1048576").End(xlUp).Row
+    For rowIdx = rowStart To rowEnd
+        filePath = ActiveWorkbook.Path & "\" & ws.Range("A" & rowIdx)
+'        MsgBox file_path
+        Call send_to_printer(filePath)
+
+    Next rowIdx
+    
+End Sub
+
+Sub GenDocfromExcel()
+ 
+'excel控制word,生成新文件，插入?片和文件名，保存
+'office 2003, VBA工具/引用中要勾?Microsoft Word 11.0 Object Library
+'office 2007, VBA工具/引用中要勾?Microsoft Word 12.0 Object Library
+'...
+     
+    Dim curPath As String
+    Dim filePath As String
+    Dim str1 As String
+    
+    curPath = ActiveWorkbook.Path
+    Range("A2:A4").Copy
+    
+    str1 = "                           MCC                                          Local"
+    
+    'Dim WordApp As Word.Application
+    Dim WordApp As Object
+    Set WordApp = CreateObject("Word.Application")
+    'WordApp.Visible = True
+    WordApp.Documents.Add
+     
+    'WordApp.Selection.Paste
+     
+    WordApp.Selection.Font.Size = 14
+    WordApp.Selection.Font.Bold = True
+    'WordApp.Selection.TypeText ("Excel 2 Word")  '插入指定的文字
+    WordApp.Selection.TypeParagraph  '插入一個新的空白段落
+    WordApp.Selection.TypeParagraph
+    WordApp.Selection.TypeParagraph
+    
+    WordApp.Selection.TypeText (str1)
+     
+    'fn$ = "D:\" & "test.doc"
+    filePath = curPath & "\test.doc"
+    'WordApp.ActiveDocument.SaveAs fn$
+    WordApp.ActiveDocument.SaveAs filePath
+    WordApp.Quit
+    Set WordApp = Nothing
+    
+End Sub
+Function copy_file(srcFilePath As String, destFilePath As String)
+    Set fs = CreateObject("Scripting.FileSystemObject")
+    'https://docs.microsoft.com/zh-tw/office/vba/language/reference/user-interface-help/filesystemobject-object
+    
+If fs.FileExists(destFilePath) Then
+    fs.DeleteFile destFilePath
+    fs.CopyFile srcFilePath, destFilePath
+    'MsgBox "File Exists!" '檔案存在
+Else
+    fs.CopyFile srcFilePath, destFilePath
+    'MsgBox "File Not Exists!" '檔案不存在
+End If
+
+    Set fs = Nothing
+    
+End Function
+
+Function test(wordD As Word.Document, line As Integer, mcc As String, loca As String)
+Dim len_space1 As Integer
+Dim len_space2 As Integer
+Dim output_str As String
+
+If (LenB(StrConv(mcc, vbFromUnicode)) > Len(mcc)) Then
+    len_space1 = 9
+    len_space2 = 50 - LenB(StrConv(mcc, vbFromUnicode))
+    wordD.Paragraphs(line).Range.Font.Size = 12
+    'MsgBox mcc & " " & "chinese"
+Else
+    len_space1 = 8
+    len_space2 = 43 - LenB(StrConv(mcc, vbFromUnicode))
+    wordD.Paragraphs(line).Range.Font.Size = 14
+    'MsgBox mcc & " " & "Eng"
+End If
+    
+    output_str = Space(len_space1) & mcc & Space(len_space2) & loca & vbCrLf
+
+    wordD.Paragraphs(line).Range.Font.name = "Calibri"
+    wordD.Paragraphs(line).Range.Font.Bold = True
+    wordD.Paragraphs(line).Range.Text = output_str
+
+End Function
+
+Sub generate_mcc_doc()
+'在Excel中開啟Word文件
+'
+'
+    Dim curPath As String
+    Dim filePath As String
+    Dim str1 As String
+    
+    curPath = ActiveWorkbook.Path
+    Dim srcFilePath As String, strFilt As String, strTitle As String
+    Dim destFilePath As String
+    
+    Dim docApp As Object
+    Dim wordD As Word.Document
+    
+    Dim ws_hciH As Worksheet
+    Set ws_D354 = Worksheets("d354")
+    
+    'strFilt = "Word文件,*.doc; *.docx; *.docm"  '允許開啟的檔案字尾名
+    'strTitle = "請選擇要開啟的Word文件"          '對話方塊標題
+    
+    'sFName = Application.GetOpenFilename(filefilter:=strFilt, Title:=strTitle)
+    'If sFName = "False" Then Exit Sub           '使用者取消選擇，則退出程式
+     
+    'sFName =
+    
+'    curPath = ActiveWorkbook.Path
+'    srcFilePath = curPath & "\goal.docx"
+'    destFilePath = curPath & "\goal_dest.docx"
+    
+    'Call copy_file(srcFilePath, destFilePath)
+    
+    'Set docApp = CreateObject("Word.Application")   '為docApp變數賦值
+    'docApp.Documents.Open sFName
+    'docApp.Visible = True
+    'docApp.Activate     '讓開啟後的檔案顯示在桌面（成為當前活動文件）
+
+'    Set wordD = GetObject(destFilePath)
+    
+    Dim rowIdx As Integer
+    Dim rowStart As Integer
+    Dim rowEnd As Integer
+        
+    Dim code As String
+    Dim inde As String
+    Dim mcc As String
+    Dim mcc1 As String
+    Dim loc As String
+    Dim loc1 As String
+    Dim oil As String
+    
+ '   Dim field1 As String
+ '   Dim field2 As String
+ '   Dim field3 As String
+ '   Dim field4 As String
+    
+ '   field1 = "FT GEARBOX C.W.P1"
+ '   field2 = "(MCC 205 4-3)"
+ '   field3 = "齒輪箱冷卻水泵#1"
+ '   field4 = "爐頂氣回收末端管線眼鏡閥"
+    
+    
+    rowStart = 2
+   ' rowEnd = ws_d354.Range("A" & "1048576").End(xlUp).Row
+    rowEnd = 10
+    
+    curPath = ActiveWorkbook.Path
+    srcFilePath = curPath & "\tempalte.docx"
+    
+   ' Set wordD = GetObject(srcFilePath)
+   ' wordD.Close
+   '  Exit Sub
+     
+   ' Set wordD = GetObject(curPath & "\D3542901.docx")
+   ' wordD.Close
+    Set docApp = CreateObject("Word.Application")   '為docApp變數賦值
+    
+    For rowIdx = rowStart To rowEnd
+        code = ws_D354.Cells(rowIdx, "A")
+        inde = ws_D354.Cells(rowIdx, "B")
+        mcc = ws_D354.Cells(rowIdx, "C")
+        mcc1 = ws_D354.Cells(rowIdx, "D")
+        loc = ws_D354.Cells(rowIdx, "E")
+        loc1 = ws_D354.Cells(rowIdx, "F")
+        oil = ws_D354.Cells(rowIdx, "G")
+
+       ' MsgBox code & " " & mcc & " " & loc
+        
+        destFilePath = curPath & "\" & code & ".docx"
+        Call copy_file(srcFilePath, destFilePath)
+
+        Set wordD = docApp.Documents.Open(destFilePath)
+        
+    '    Set wordD = GetObject(destFilePath)
+        
+        
+        Call test(wordD, 10, mcc, mcc)
+        Call test(wordD, 11, mcc1, "")
+        Call test(wordD, 12, loc, loc)
+        Call test(wordD, 13, loc1, loc1)
+        Call test(wordD, 14, oil, oil)
+    
+    
+        Call test(wordD, 27, mcc, mcc)
+        Call test(wordD, 28, mcc1, "")
+        Call test(wordD, 29, loc, loc)
+        Call test(wordD, 30, loc1, loc1)
+        Call test(wordD, 31, oil, oil)
+        wordD.Save
+        wordD.Close
+        
+    Next rowIdx
+        
+ 
+    
+    
+ '   docApp.Selection.TypeText ("BB Feeder                      AA Feeder")  '插入指定的文字
+
+
+'    docApp.Selection.TypeParagraph  '插入一個新的空白段
+'    docApp.ActiveDocument.Save
+'    docApp.Quit
+    
+'    wordD.Close
+     Set docApp = Nothing
+    
+End Sub
+
+
+
+
